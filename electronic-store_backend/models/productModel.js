@@ -8,7 +8,14 @@ const productSchema = new mongoose.Schema(
     stock: { type: Number, default: 0 },
     category: { type: mongoose.Schema.Types.ObjectId, ref: 'Category' },
     brand: { type: mongoose.Schema.Types.ObjectId, ref: 'Brand' },
-    image: { type: String },
+
+    images: [
+      {
+        url: String,
+        public_id: String,
+      },
+    ],
+
     specifications: {
       voltage: String,
       current: String,

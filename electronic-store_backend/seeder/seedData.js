@@ -12,11 +12,10 @@ import Review from '../models/reviewModel.js';
 import Inventory from '../models/inventoryModel.js';
 
 dotenv.config();
+connectDB();
 
 const seedData = async () => {
   try {
-    await connectDB();
-
     console.log('🧹 Xóa dữ liệu cũ...');
     await Promise.all([
       User.deleteMany(),
@@ -32,61 +31,121 @@ const seedData = async () => {
     console.log('🌱 Thêm dữ liệu mẫu...');
 
     const categories = await Category.insertMany([
-      { name: 'Smartphones' },
-      { name: 'Laptops' },
-      { name: 'Accessories' },
+      { name: 'Vi điều khiển' },
+      { name: 'Cảm biến' },
+      { name: 'Module nguồn' },
+      { name: 'IC - Transistor' },
+      { name: 'Linh kiện thụ động' },
     ]);
 
     const brands = await Brand.insertMany([
-      { name: 'Apple' },
-      { name: 'Samsung' },
-      { name: 'Dell' },
+      { name: 'Arduino' },
+      { name: 'Espressif' },
+      { name: 'STM' },
+      { name: 'Texas Instruments' },
+      { name: 'Raspberry Pi' },
     ]);
 
     const users = await User.insertMany([
-      { name: 'Admin', email: 'admin@example.com', password: '123456' },
-      { name: 'John Doe', email: 'john@example.com', password: '123456' },
+      {
+        name: 'Admin',
+        email: 'admin@linhkien.vn',
+        password: '123456',
+        isAdmin: true,
+      },
+      {
+        name: 'Nguyen Van A',
+        email: 'a@linhkien.vn',
+        password: '123456',
+      },
     ]);
 
     const products = await Product.insertMany([
       {
-        name: 'iPhone 15',
-        description: 'Latest iPhone model with A17 chip',
-        price: 1200,
+        name: 'Arduino Uno R3',
+        description:
+          'Board vi điều khiển phổ biến, dễ dùng cho người mới bắt đầu.',
+        price: 250000,
         category: categories[0]._id,
         brand: brands[0]._id,
-        stock: 50,
+        stock: 100,
+        images: [
+          {
+            url: 'https://res.cloudinary.com/demo/image/upload/v1720000000/products/arduino_uno.jpg',
+            public_id: 'products/arduino_uno',
+          },
+        ],
+        specifications: {
+          voltage: '5V',
+          current: '500mA',
+          size: '68.6mm x 53.4mm',
+          weight: '25g',
+        },
       },
       {
-        name: 'Samsung Galaxy S24',
-        description: 'High-end Android smartphone',
-        price: 999,
-        category: categories[0]._id,
-        brand: brands[1]._id,
-        stock: 60,
+        name: 'Cảm biến DHT11',
+        description:
+          'Cảm biến đo nhiệt độ và độ ẩm, giao tiếp digital, dễ tích hợp.',
+        price: 35000,
+        category: categories[1]._id,
+        brand: brands[2]._id,
+        stock: 200,
+        images: [
+          {
+            url: 'https://res.cloudinary.com/demo/image/upload/v1720000000/products/dht11.jpg',
+            public_id: 'products/dht11',
+          },
+        ],
+        specifications: {
+          voltage: '3V-5V',
+          current: '2.5mA',
+          size: '15mm x 12mm',
+          weight: '5g',
+        },
+      },
+      {
+        name: 'Module nguồn LM2596',
+        description: 'Bộ giảm áp DC-DC có thể điều chỉnh điện áp ra.',
+        price: 45000,
+        category: categories[2]._id,
+        brand: brands[3]._id,
+        stock: 80,
+        images: [
+          {
+            url: 'https://res.cloudinary.com/demo/image/upload/v1720000000/products/arduino_uno.jpg',
+            public_id: 'products/arduino_uno',
+          },
+        ],
+        specifications: {
+          voltage: '4V-40V',
+          current: '3A',
+          size: '43mm x 21mm',
+          weight: '12g',
+        },
       },
     ]);
 
     await Inventory.insertMany([
-      { product: products[0]._id, quantity: 50, type: 'import' },
-      { product: products[1]._id, quantity: 60, type: 'import' },
+      { product: products[0]._id, quantity: 100, type: 'import' },
+      { product: products[1]._id, quantity: 200, type: 'import' },
+      { product: products[2]._id, quantity: 80, type: 'import' },
     ]);
 
     await Cart.insertMany([
       {
         user: users[1]._id,
-        items: [{ product: products[0]._id, quantity: 1 }],
+        items: [{ product: products[0]._id, quantity: 2 }],
       },
     ]);
 
     await Order.insertMany([
       {
-        user: users[0]._id,
+        user: users[1]._id,
         products: [
-          { product: products[0]._id, quantity: 2 },
-          { product: products[1]._id, quantity: 1 },
+          { product: products[0]._id, quantity: 1 },
+          { product: products[1]._id, quantity: 3 },
         ],
-        total: 200000,
+        total: 355000,
         address: '123 Nguyễn Văn Linh, Đà Nẵng',
         status: 'Processing',
       },
@@ -97,14 +156,14 @@ const seedData = async () => {
         product: products[0]._id,
         user: users[1]._id,
         rating: 5,
-        comment: 'Tuyệt vời, rất đáng tiền!',
+        comment: 'Chất lượng tốt, giao hàng nhanh!',
       },
     ]);
 
-    console.log('✅ Dữ liệu mẫu đã được thêm thành công!');
+    console.log('✅ Đã thêm dữ liệu mẫu thành công!');
     process.exit();
   } catch (error) {
-    console.error('❌ Lỗi seed dữ liệu:', error);
+    console.error(`❌ Lỗi seed dữ liệu: ${error.message}`);
     process.exit(1);
   }
 };

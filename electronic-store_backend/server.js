@@ -12,6 +12,8 @@ import orderRoutes from './routes/orderRoutes.js';
 import reviewRoutes from './routes/reviewRoutes.js';
 import categoryRoutes from './routes/categoryRoutes.js';
 import { notFound, errorHandler } from './middleware/errorMiddleware.js';
+import uploadRoutes from './routes/uploadRoutes.js'
+
 
 dotenv.config();
 
@@ -30,6 +32,7 @@ app.use('/api/reviews', reviewRoutes);
 app.use('/api/carts', cartRoutes);
 app.use('/api/inventory', inventoryRoutes);
 app.use('/api/brands', brandRoutes);
+app.use('/api/upload', uploadRoutes);
 
 app.get('/', (req, res) => {
   res.send('API is running...');
