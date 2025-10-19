@@ -1,5 +1,7 @@
+import unidecode from "unidecode";
 import Product from '../models/productModel.js';
 import cloudinary from '../config/cloudinary.js';
+import Order from '../models/orderModel.js';
 
 export const getProducts = async (req, res) => {
   try {
@@ -8,7 +10,30 @@ export const getProducts = async (req, res) => {
 
     if (category) filter.category = category;
     if (brand) filter.brand = brand;
-    if (keyword) filter.name = { $regex: keyword, $options: 'i' };
+
+    // ✅ Tìm kiếm không dấu và có dấu
+    if (keyword && keyword.trim()) {
+      const cleanKeyword = decodeURIComponent(keyword.trim());
+      const normalizedKeyword = unidecode(cleanKeyword).toLowerCase();
+
+      // Lấy toàn bộ sản phẩm rồi lọc thủ công vì Mongo không bỏ dấu được
+      const allProducts = await Product.find()
+        .populate("category brand")
+        .sort({ createdAt: -1 });
+
+      const filteredProducts = allProducts.filter((p) => {
+        const name = unidecode(p.name || "").toLowerCase();
+        const desc = unidecode(p.description || "").toLowerCase();
+        return (
+          name.includes(normalizedKeyword) ||
+          desc.includes(normalizedKeyword)
+        );
+      });
+
+      return res.status(200).json(filteredProducts);
+    }
+
+    // ✅ Nếu không có keyword thì dùng filter thông thường
     if (min || max) {
       filter.price = {};
       if (min) filter.price.$gte = Number(min);
@@ -16,7 +41,7 @@ export const getProducts = async (req, res) => {
     }
 
     const products = await Product.find(filter)
-      .populate('category brand')
+      .populate("category brand")
       .sort({ createdAt: -1 });
 
     res.status(200).json(products);
@@ -27,12 +52,29 @@ export const getProducts = async (req, res) => {
 
 export const getProductById = async (req, res) => {
   try {
-    const product = await Product.findById(req.params.id).populate(
-      'category brand'
-    );
-    if (!product)
-      return res.status(404).json({ message: 'Không tìm thấy sản phẩm' });
-    res.status(200).json(product);
+    const product = await Product.findById(req.params.id)
+      .populate("category", "name")
+      .populate("brand", "name");
+
+    if (!product) return res.status(404).json({ message: "Không tìm thấy sản phẩm" });
+
+    let canReview = false;
+
+    if (req.user) {
+      const hasDeliveredOrder = await Order.findOne({
+        user: req.user._id,
+        status: "Delivered",
+        "items.product": product._id,
+      });
+      canReview = !!hasDeliveredOrder;
+    }
+
+    res.json({
+      ...product._doc,
+      canReview,
+      rating: product.rating || 0,
+      numReviews: product.numReviews || 0,
+    });
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
