@@ -5,6 +5,7 @@ import {
   createReview,
   updateReview,
   deleteReview,
+  canReview,
 } from '../controllers/reviewController.js';
 import { protect, admin } from '../middleware/authMiddleware.js';
 
@@ -17,5 +18,6 @@ router.get('/product/:productId', getReviewsByProduct);
 router.post('/product/:productId', protect, createReview);
 router.put('/:id', protect, updateReview);
 router.delete('/:id', protect, deleteReview);
+router.get('/can-review/:productId', protect, canReview);
 
 export default router;

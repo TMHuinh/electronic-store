@@ -1,8 +1,9 @@
 import Review from '../models/reviewModel.js';
 import Product from '../models/productModel.js';
 import Order from '../models/orderModel.js';
+import mongoose from "mongoose";
 
-// Lấy tất cả review
+// 📍 Lấy tất cả review
 export const getReviews = async (req, res) => {
   try {
     const reviews = await Review.find().populate('user product', 'name email');
@@ -12,7 +13,7 @@ export const getReviews = async (req, res) => {
   }
 };
 
-// Lấy review theo product
+// 📍 Lấy review theo product
 export const getReviewsByProduct = async (req, res) => {
   try {
     const reviews = await Review.find({ product: req.params.productId })
@@ -23,27 +24,37 @@ export const getReviewsByProduct = async (req, res) => {
   }
 };
 
-// Tạo review mới
+// 📍 Tạo review mới
 export const createReview = async (req, res) => {
   const { rating, comment } = req.body;
   const userId = req.user._id;
   const productId = req.params.productId;
 
   try {
-    // Kiểm tra user đã mua và nhận hàng chưa
+    // 🧩 1. Kiểm tra user đã nhận hàng sản phẩm này chưa
     const hasDeliveredOrder = await Order.findOne({
       user: userId,
       status: "Delivered",
-      "items.product": productId,
+      items: {
+        $elemMatch: {
+          product: new mongoose.Types.ObjectId(productId),
+        },
+      },
     });
 
     if (!hasDeliveredOrder) {
       return res.status(400).json({
-        message: "Bạn chỉ có thể đánh giá sản phẩm đã mua và đã nhận hàng",
+        message: "Bạn chỉ có thể đánh giá sản phẩm đã mua và đã nhận hàng.",
       });
     }
 
-    // Tạo review
+    // 🧩 2. Kiểm tra nếu user đã từng review sản phẩm này
+    const existingReview = await Review.findOne({ user: userId, product: productId });
+    if (existingReview) {
+      return res.status(400).json({ message: "Bạn đã đánh giá sản phẩm này rồi." });
+    }
+
+    // 🧩 3. Tạo review mới
     const review = await Review.create({
       user: userId,
       product: productId,
@@ -51,7 +62,10 @@ export const createReview = async (req, res) => {
       comment,
     });
 
-    // Cập nhật rating trung bình và số lượng review
+    // ✅ Populate user để hiện tên ngay sau khi tạo
+    await review.populate("user", "name email");
+
+    // 🧩 4. Cập nhật lại điểm trung bình & số lượng đánh giá
     const reviews = await Review.find({ product: productId });
     const avgRating = reviews.reduce((acc, r) => acc + r.rating, 0) / reviews.length;
 
@@ -63,11 +77,12 @@ export const createReview = async (req, res) => {
 
     res.status(201).json({ review, product: updatedProduct });
   } catch (error) {
-    res.status(400).json({ message: error.message });
+    console.error("❌ createReview error:", error);
+    res.status(500).json({ message: error.message });
   }
 };
 
-// Sửa review
+// 📍 Cập nhật review
 export const updateReview = async (req, res) => {
   try {
     const review = await Review.findById(req.params.id);
@@ -96,7 +111,7 @@ export const updateReview = async (req, res) => {
   }
 };
 
-// Xóa review
+// 📍 Xóa review
 export const deleteReview = async (req, res) => {
   try {
     const review = await Review.findById(req.params.id);
@@ -113,10 +128,9 @@ export const deleteReview = async (req, res) => {
 
     // Cập nhật rating trung bình sau khi xóa
     const reviews = await Review.find({ product: productId });
-    let avgRating = 0;
-    if (reviews.length > 0) {
-      avgRating = reviews.reduce((acc, r) => acc + r.rating, 0) / reviews.length;
-    }
+    const avgRating = reviews.length
+      ? reviews.reduce((acc, r) => acc + r.rating, 0) / reviews.length
+      : 0;
 
     await Product.findByIdAndUpdate(productId, {
       rating: avgRating,
@@ -124,6 +138,23 @@ export const deleteReview = async (req, res) => {
     });
 
     res.json({ message: 'Đã xóa review và cập nhật lại rating sản phẩm' });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+export const canReview = async (req, res) => {
+  try {
+    const userId = req.user._id;
+    const productId = req.params.productId;
+
+    const hasDeliveredOrder = await Order.findOne({
+      user: userId,
+      status: "Delivered",
+      items: { $elemMatch: { product: productId } },
+    });
+
+    res.json({ canReview: !!hasDeliveredOrder });
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
