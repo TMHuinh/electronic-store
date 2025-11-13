@@ -223,15 +223,16 @@ export const updateProfile = async (req, res) => {
     user.phone = req.body.phone || user.phone;
     user.address = req.body.address || user.address;
 
+    // ✅ chỉ gán password, Mongoose sẽ tự hash nhờ pre('save')
     if (req.body.password) {
-      const salt = await bcrypt.genSalt(10);
-      user.password = await bcrypt.hash(req.body.password, salt);
+      user.password = req.body.password;
     }
 
     const updatedUser = await user.save();
 
     res.json({
       message: "Cập nhật thành công",
+      token: generateToken(updatedUser._id),
       user: {
         _id: updatedUser._id,
         name: updatedUser.name,
